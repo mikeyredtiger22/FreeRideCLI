@@ -1,6 +1,9 @@
+import com.google.maps.model.DirectionsLeg;
+import com.google.maps.model.DirectionsResult;
+import org.joda.time.LocalDateTime;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Scanner;
@@ -83,6 +86,7 @@ public class CLI {
             System.out.print(">");
             userInput = scanner.nextLine();
         }
+        System.exit(777);
     }
 
     /**
@@ -113,17 +117,27 @@ public class CLI {
     public static Task generateRandomTask(String state) {
         logger.log(Level.INFO, "Generating Random Task");
 
+        double startLat = gaussianRandom(51, 1, true, 5);
+        double startLon = gaussianRandom(-1, 1, false, 5);
+        double endLat = gaussianRandom(51, 1, true, 5);
+        double endLon = gaussianRandom(-1, 1, false, 5);
+
+        DirectionsResult directionsResult =
+                DirectionsLoader.getTaskDirections(startLat, startLon, endLat, endLon);
+        String directionsPath = null;
+        DirectionsLeg routeData = null;
+        if (directionsResult.routes.length > 0) {
+            directionsPath = directionsResult.routes[0].overviewPolyline.getEncodedPath();
+            routeData = directionsResult.routes[0].legs[0];
+        }
+
         return new Task(
-                gaussianRandom(51, 1, true, 5),
-                gaussianRandom(-1, 1, false, 5),
-                gaussianRandom(51, 1, true, 5),
-                gaussianRandom(-1, 1, false, 5),
-                LocalDateTime.now().toString(),
-                null,
-                "Generated",
-                "Randomly generated task values.",
+                startLat, startLon, endLat, endLon,
+                LocalDateTime.now(), null,
+                "Generated", "Randomly generated task values.",
                 state,
                 null,
+                directionsPath, routeData,
                 gaussianRandomInt(0, 1000));
     }
 

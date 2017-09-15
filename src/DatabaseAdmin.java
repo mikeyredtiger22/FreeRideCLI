@@ -1,8 +1,11 @@
+import com.fatboyindustrial.gsonjodatime.Converters;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.auth.FirebaseCredentials;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -40,8 +43,9 @@ public class DatabaseAdmin {
     }
 
     public void addTasksArrayToDatabase(ArrayList<Task> taskArray) {
+        Gson gson = getGson();
         for (Task task :taskArray) {
-            addTaskToDatabase(task);
+            addTaskToDatabase(task, gson);
         }
     }
 
@@ -51,17 +55,21 @@ public class DatabaseAdmin {
      * database.
      * @param newTask object
      */
-    public void addTaskToDatabase(Task newTask) {
+    public void addTaskToDatabase(Task newTask, Gson gson) {
         logger.log(Level.INFO, "Adding task object to DB");
         //Generates a unique key to store the task under (becomes the taskId)
         DatabaseReference newTaskRef = allTasksRef.push();
         String taskId = newTaskRef.getKey();
         newTask.setTaskId(taskId);
-        newTaskRef.setValue(newTask);
+        String taskJson = gson.toJson(newTask);
+        newTaskRef.setValue(taskJson);
     }
-
 
     public void deleteAllTasks() {
         allTasksRef.removeValue();
+    }
+
+    private Gson getGson(){
+        return Converters.registerLocalDateTime(new GsonBuilder()).create();
     }
 }
