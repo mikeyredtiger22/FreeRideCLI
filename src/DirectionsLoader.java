@@ -16,7 +16,7 @@ public class DirectionsLoader {
 
 
     //Each task direction takes about 0.1 seconds to load
-    public static DirectionsResult getTaskDirections(double startLat, double startLon, double endLat, double endLon){
+    public static DirectionsResult getTaskDirections(Double startLat, Double startLon, Double endLat, Double endLon){
         DirectionsResult result = null;
         try {
             result = DirectionsApi.newRequest(GEO_API_CONTEXT)

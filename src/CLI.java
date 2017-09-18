@@ -12,6 +12,8 @@ import java.util.logging.Logger;
 
 public class CLI {
     private static final Logger logger = Logger.getLogger(CLI.class.getName());
+    private Scanner scanner;
+    private DatabaseAdmin databaseAdmin;
 
     /**
      * Reads task data from file, add these tasks to database
@@ -24,15 +26,13 @@ public class CLI {
 
     public CLI() {
 
-        DatabaseAdmin databaseAdmin = new DatabaseAdmin();
-        System.out.println("**            FREERIDE NEW TASK - COMMAND LINE INTERFACE             **");
-        System.out.println("**  type 'create' to generate tasks and add them to the database     **");
-        System.out.println("**  type 'delete all tasks' to delete all the tasks in the database  **");
-        System.out.println("**  type 'exit' to leave the CLI                                     **");
-        System.out.println("**  or type 'info' to see these commands again                       **");
-        Scanner scanner = new Scanner(System.in);
-        System.out.print(">");
-        String userInput = scanner.nextLine();
+        //TODO, read json file
+        this.databaseAdmin = new DatabaseAdmin();
+        this.scanner = new Scanner(System.in);
+
+
+        printInfoPage();
+        String userInput = receiveInput("");
 
         while (!userInput.equalsIgnoreCase("exit")) {
             switch (userInput) {
@@ -41,28 +41,30 @@ public class CLI {
                     break;
 
                 case "create":
-                    System.out.println("How many tasks to create? Enter '0' to cancel.");
-                    System.out.print(">");
-                    String amountString = scanner.nextLine();
+                    String amountString = receiveInput("How many tasks to create? Enter '0' to cancel.");
                     Integer amount = Integer.parseInt(amountString);
                     if (amount > 0) {
-                        System.out.println("Choose tasks state? ('new' or 'available') Enter \"\" to cancel.");
-                        System.out.print(">");
-                        String state = scanner.nextLine();
-                        if (state.equals("new") || state.equals("available")) {
-                            databaseAdmin.addTasksArrayToDatabase(generateRandomTasks(amount, state));
-                            System.out.println("Added " + amount + " " + state + " tasks to database.");
-                        } else {
+                        String state = receiveInput("Choose task state ('available' or 'new'). Press Enter to cancel.");
+                        if (!state.equals("available") && !state.equals("new")) {
                             System.out.println(state + " not a valid task state. \uD83D\uDC80 ");
+                        } else {
+                            String locationType = receiveInput("Should tasks have 'one' location or 'two' (start and end) locations?");
+                            if (!locationType.equals("one") && !locationType.equals("two")) {
+                                System.out.println("Location type can only be 'one' or 'two, you have entered '" + locationType + "'");
+                            } else {
+                                boolean oneLocationTask = locationType.equals("one");
+                                String location = receiveInput("Press Enter to randomly generate task location");
+                                //TODO user specify location and variance in miles
+                                createTasks(amount, oneLocationTask, state);
+                                System.out.println("Added " + amount + " " + state + " tasks to database.");
+                            }
                         }
                     }
                     break;
 
                 case "delete all tasks":
-                    System.out.println("Are you sure you want to delete all the tasks in the database?");
-                    System.out.println("Type 'yes' to confirm or 'no' to cancel");
-                    System.out.print(">");
-                    String response = scanner.nextLine();
+                    String response = receiveInput("Are you sure you want to delete all the tasks in the database?\n" +
+                                                    "Type 'yes' to confirm or 'no' to cancel");
                     if (response.equalsIgnoreCase("yes")) {
                         databaseAdmin.deleteAllTasks();
                         System.out.println("Deleted all tasks from database.");
@@ -71,22 +73,36 @@ public class CLI {
                     }
                     break;
 
-                case "info":
-                    System.out.println("**                     ___CLI__INFO__PAGE___                         **");
-                    System.out.println("**  type 'create' to generate tasks and add them to the database     **");
-                    System.out.println("**  type 'delete all tasks' to delete all the tasks in the database  **");
-                    System.out.println("**  type 'exit' to leave the CLI.                                    **");
-                    System.out.println("**  or type 'info' to see these commands again                       **");
-                    break;
-
                 default:
                     System.out.println("'" + userInput + "' is not a recognised command.");
                     break;
             }
+
+            printInfoPage();
             System.out.print(">");
-            userInput = scanner.nextLine();
+            userInput = receiveInput("");
         }
         System.exit(777);
+    }
+
+    private String receiveInput(String output) {
+        System.out.println(output);
+        System.out.print(">");
+        return scanner.nextLine().trim();
+    }
+
+    private void printInfoPage() {
+        System.out.println("**            FREERIDE NEW TASK - COMMAND LINE INTERFACE             **");
+        System.out.println("**  type 'create' to generate tasks and add them to the database     **");
+        System.out.println("**  type 'delete all tasks' to delete all the tasks in the database  **");
+        System.out.println("**  type 'exit' to leave the CLI                                     **");
+        System.out.println("**  or type 'info' to see these commands again                       **");
+        //TODO explain what questions will be asked when creating tasks and how task state affects it.
+
+    }
+
+    private void createTasks(int amount, boolean oneLocationTask, String state) {
+        databaseAdmin.addTasksArrayToDatabase(oneLocationTask, generateRandomTasks(amount, oneLocationTask, state));
     }
 
     /**
@@ -97,38 +113,46 @@ public class CLI {
      * todo make task Builder
      * Location and incentive are randomly generated using guassian distribution.
      * @param amount of tasks to generate and return
+     * @param oneLocationTask true for 1 location task, false for 2 location (start and end) task
      * @param state of generated tasks
      * @return list of tasks generated
      */
-    public static ArrayList<Task> generateRandomTasks(int amount, String state) {
+    public static ArrayList<Task> generateRandomTasks(int amount, boolean oneLocationTask, String state) {
         logger.log(Level.INFO, "Generating " + amount + " Random Tasks");
 
         ArrayList<Task> tasks = new ArrayList<>();
         for (int i=0; i<amount; i++) {
-            tasks.add(generateRandomTask(state));
+            tasks.add(generateRandomTask(oneLocationTask, state));
         }
         return tasks;
     }
 
     /**
      * Location and incentive are randomly generated using guassian distribution.
+     * @param oneLocationTask true for 1 location task, false for 2 location (start and end) task
+     * @param state of generated tasks
      * @return generated task
      */
-    public static Task generateRandomTask(String state) {
-        logger.log(Level.INFO, "Generating Random Task");
+    public static Task generateRandomTask(boolean oneLocationTask, String state) {
 
-        double startLat = gaussianRandom(51, 1, true, 5);
-        double startLon = gaussianRandom(-1, 1, false, 5);
-        double endLat = gaussianRandom(51, 1, true, 5);
-        double endLon = gaussianRandom(-1, 1, false, 5);
-
-        DirectionsResult directionsResult =
-                DirectionsLoader.getTaskDirections(startLat, startLon, endLat, endLon);
+        Double startLat = gaussianRandom(51, 1, true, 5);
+        Double startLon = gaussianRandom(-1, 1, false, 5);
+        Double endLat = null;
+        Double endLon = null;
         String directionsPath = null;
         DirectionsLeg routeData = null;
-        if (directionsResult.routes.length > 0) {
-            directionsPath = directionsResult.routes[0].overviewPolyline.getEncodedPath();
-            routeData = directionsResult.routes[0].legs[0];
+
+        if (!oneLocationTask) {
+            endLat = gaussianRandom(51, 1, true, 5);
+            endLon = gaussianRandom(-1, 1, false, 5);
+
+            DirectionsResult directionsResult =
+                    DirectionsLoader.getTaskDirections(startLat, startLon, endLat, endLon);
+
+            if (directionsResult.routes.length > 0) {
+                directionsPath = directionsResult.routes[0].overviewPolyline.getEncodedPath();
+                routeData = directionsResult.routes[0].legs[0];
+            }
         }
 
         return new Task(
@@ -145,9 +169,9 @@ public class CLI {
         return mean + (int) Math.abs((new Random().nextGaussian() * variance));
     }
 
-    private static double gaussianRandom(double mean, double variance, boolean oneDirection, int decimalPlaces){ //well that variable name will have to be changed
+    private static double gaussianRandom(double mean, double variance, boolean absoluteValue, int decimalPlaces){
         double diffFromMean = new Random().nextGaussian() * variance;
-        if (oneDirection) {
+        if (absoluteValue) {
             diffFromMean = Math.abs(diffFromMean);
         }
         double result = mean + diffFromMean;

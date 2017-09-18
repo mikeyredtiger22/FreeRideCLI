@@ -18,7 +18,8 @@ import java.util.logging.Logger;
 public class DatabaseAdmin {
 
     private static final Logger logger = Logger.getLogger(DatabaseAdmin.class.getName());
-    private DatabaseReference allTasksRef;
+    private DatabaseReference oneLocTasksRef;
+    private DatabaseReference twoLocTasksRef;
 
     /**
      * Authenticate Server - Using Database Admin API
@@ -39,13 +40,20 @@ public class DatabaseAdmin {
             FirebaseApp.initializeApp(options);
         } catch (IOException e) {e.printStackTrace();}
         FirebaseDatabase databaseInstance = FirebaseDatabase.getInstance();
-        allTasksRef = databaseInstance.getReference(VALUES.TASKS_PATH_DB);
+        oneLocTasksRef = databaseInstance.getReference("tasks/oneLoc");
+        twoLocTasksRef = databaseInstance.getReference("tasks/twoLoc");
     }
 
-    public void addTasksArrayToDatabase(ArrayList<Task> taskArray) {
+    /**
+     * Receives an array of tasks, adds them to the same path in the database individually
+     * @param oneLocationTasks true for one location tasks, false for two location (start and end) tasks
+     * @param taskArray tasks
+     */
+    public void addTasksArrayToDatabase(boolean oneLocationTasks, ArrayList<Task> taskArray) {
+        DatabaseReference tasksRef = oneLocationTasks ? oneLocTasksRef : twoLocTasksRef;
         Gson gson = getGson();
         for (Task task :taskArray) {
-            addTaskToDatabase(task, gson);
+            addTaskToDatabase(tasksRef, task, gson);
         }
     }
 
@@ -53,12 +61,14 @@ public class DatabaseAdmin {
      * Adds task object to the database under a unique generated key. This key is created by the
      * database. This key is then set as the taskId of the object before committing it to the
      * database.
-     * @param newTask object
+     * @param databasePath to store task
+     * @param newTask to add to database
+     * @param gson with DateTime serializer
      */
-    public void addTaskToDatabase(Task newTask, Gson gson) {
+    private void addTaskToDatabase(DatabaseReference databasePath, Task newTask, Gson gson) {
         logger.log(Level.INFO, "Adding task object to DB");
         //Generates a unique key to store the task under (becomes the taskId)
-        DatabaseReference newTaskRef = allTasksRef.push();
+        DatabaseReference newTaskRef = databasePath.push();
         String taskId = newTaskRef.getKey();
         newTask.setTaskId(taskId);
         String taskJson = gson.toJson(newTask);
@@ -66,7 +76,8 @@ public class DatabaseAdmin {
     }
 
     public void deleteAllTasks() {
-        allTasksRef.removeValue();
+        oneLocTasksRef.removeValue();
+        twoLocTasksRef.removeValue();
     }
 
     private Gson getGson(){
