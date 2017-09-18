@@ -135,33 +135,46 @@ public class CLI {
      */
     public static Task generateRandomTask(boolean oneLocationTask, String state) {
 
-        Double startLat = gaussianRandom(51, 1, true, 5);
-        Double startLon = gaussianRandom(-1, 1, false, 5);
+        Double startLat = gaussianRandom(50.9355, 0.001, false, 5);
+        Double startLon = gaussianRandom(-1.397, 0.001, false, 5);
+        String startAddress = null;
+
         Double endLat = null;
         Double endLon = null;
+        String endAddress = null;
         String directionsPath = null;
-        DirectionsLeg routeData = null;
+        String directionsDistance = null;
+        String directionsDuration = null;
 
-        if (!oneLocationTask) {
-            endLat = gaussianRandom(51, 1, true, 5);
-            endLon = gaussianRandom(-1, 1, false, 5);
+        if (oneLocationTask) {
+            startAddress = DirectionsLoader.getLocationAddress(startLat, startLon);
+        } else {
+            endLat = gaussianRandom(50.9355, 0.001, false, 5);
+            endLon = gaussianRandom(-1.397, 0.001, false, 5);
 
             DirectionsResult directionsResult =
                     DirectionsLoader.getTaskDirections(startLat, startLon, endLat, endLon);
 
             if (directionsResult.routes.length > 0) {
+                DirectionsLeg routeData = directionsResult.routes[0].legs[0];
+
                 directionsPath = directionsResult.routes[0].overviewPolyline.getEncodedPath();
-                routeData = directionsResult.routes[0].legs[0];
+                directionsDistance = routeData.distance.humanReadable;
+                directionsDuration = routeData.duration.humanReadable;
+                startAddress = routeData.startAddress;
+                endAddress = routeData.endAddress;
             }
         }
 
         return new Task(
+                oneLocationTask,
                 startLat, startLon, endLat, endLon,
+                startAddress, endAddress,
                 LocalDateTime.now(), null,
                 "Generated", "Randomly generated task values.",
                 state,
                 null,
-                directionsPath, routeData,
+                directionsPath, directionsDistance, directionsDuration,
                 gaussianRandomInt(0, 1000));
     }
 

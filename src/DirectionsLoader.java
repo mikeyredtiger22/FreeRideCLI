@@ -1,8 +1,10 @@
 
 import com.google.maps.DirectionsApi;
 import com.google.maps.GeoApiContext;
+import com.google.maps.GeocodingApi;
 import com.google.maps.errors.ApiException;
 import com.google.maps.model.DirectionsResult;
+import com.google.maps.model.GeocodingResult;
 import com.google.maps.model.LatLng;
 import com.google.maps.model.TravelMode;
 
@@ -16,7 +18,7 @@ public class DirectionsLoader {
 
 
     //Each task direction takes about 0.1 seconds to load
-    public static DirectionsResult getTaskDirections(Double startLat, Double startLon, Double endLat, Double endLon){
+    public static DirectionsResult getTaskDirections(double startLat, Double startLon, Double endLat, Double endLon){
         DirectionsResult result = null;
         try {
             result = DirectionsApi.newRequest(GEO_API_CONTEXT)
@@ -29,6 +31,25 @@ public class DirectionsLoader {
             e.printStackTrace();
         }
         return result;
+    }
+
+    public static String getLocationAddress(double startLat, Double startLon) {
+        LatLng location = new LatLng(startLat, startLon);
+        GeocodingResult[] results = null;
+        try {
+            results = GeocodingApi.newRequest(GEO_API_CONTEXT)
+                    .latlng(location)
+                    .language("en-GB")
+                    .await();
+        } catch (ApiException | InterruptedException | IOException e) {
+            e.printStackTrace();
+        }
+
+        if (results.length > 0) {
+            return results[0].formattedAddress;
+        } else {
+            return null;
+        }
     }
 
     /**
