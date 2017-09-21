@@ -3,13 +3,10 @@ import org.joda.time.LocalDateTime;
 public class Task {
 
     private String taskId;
-    private Boolean oneLocation;
-    private Double startLat;
-    private Double startLong;
-    private Double endLat;
-    private Double endLong;
-    private String startAddress;
-    private String endAddress;
+    private Double[] locationLats;
+    private Double[] locationLongs;
+    private String[] locationInstructions;
+    private String[] locationAddresses;
     private LocalDateTime creationLocalDateTime;
     private LocalDateTime expirationLocalDateTime;
     private String title;
@@ -21,18 +18,14 @@ public class Task {
     private String directionsDuration;
     private Integer incentive;
 
-    public Task(Boolean oneLocation, Double startLat, Double startLong, Double endLat, Double endLong,
-                String startAddress, String endAddress,
+    public Task(Double[] locationLats, Double[] locationLongs, String[] locationInstructions, String[] locationAddresses,
                 LocalDateTime creationLocalDateTime, LocalDateTime expirationLocalDateTime,
                 String title, String description, String state, String user,
                 String directionsPath, String directionsDistance, String directionsDuration, Integer incentive) {
-        this.oneLocation = oneLocation;
-        this.startLat = startLat;
-        this.startLong = startLong;
-        this.endLat = endLat;
-        this.endLong = endLong;
-        this.startAddress = startAddress;
-        this.endAddress = endAddress;
+        this.locationLats = locationLats;
+        this.locationLongs = locationLongs;
+        this.locationInstructions = locationInstructions;
+        this.locationAddresses = locationAddresses;
         this.creationLocalDateTime = creationLocalDateTime;
         this.expirationLocalDateTime = expirationLocalDateTime;
         this.title = title;
@@ -57,60 +50,36 @@ public class Task {
         this.taskId = taskId;
     }
 
-    public Boolean getOneLocation() {
-        return oneLocation;
+    public Double[] getLocationLats() {
+        return locationLats;
     }
 
-    public void setOneLocation(Boolean oneLocation) {
-        this.oneLocation = oneLocation;
+    public void setLocationLats(Double[] locationLats) {
+        this.locationLats = locationLats;
     }
 
-    public Double getStartLat() {
-        return startLat;
+    public Double[] getLocationLongs() {
+        return locationLongs;
     }
 
-    public void setStartLat(Double startLat) {
-        this.startLat = startLat;
+    public void setLocationLongs(Double[] locationLongs) {
+        this.locationLongs = locationLongs;
     }
 
-    public Double getStartLong() {
-        return startLong;
+    public String[] getLocationInstructions() {
+        return locationInstructions;
     }
 
-    public void setStartLong(Double startLong) {
-        this.startLong = startLong;
+    public void setLocationInstructions(String[] locationInstructions) {
+        this.locationInstructions = locationInstructions;
     }
 
-    public Double getEndLat() {
-        return endLat;
+    public String[] getLocationAddresses() {
+        return locationAddresses;
     }
 
-    public void setEndLat(Double endLat) {
-        this.endLat = endLat;
-    }
-
-    public Double getEndLong() {
-        return endLong;
-    }
-
-    public void setEndLong(Double endLong) {
-        this.endLong = endLong;
-    }
-
-    public String getStartAddress() {
-        return startAddress;
-    }
-
-    public void setStartAddress(String startAddress) {
-        this.startAddress = startAddress;
-    }
-
-    public String getEndAddress() {
-        return endAddress;
-    }
-
-    public void setEndAddress(String endAddress) {
-        this.endAddress = endAddress;
+    public void setLocationAddresses(String[] locationAddresses) {
+        this.locationAddresses = locationAddresses;
     }
 
     public LocalDateTime getCreationLocalDateTime() {

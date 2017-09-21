@@ -16,16 +16,36 @@ public class DirectionsLoader {
 
     private static final GeoApiContext GEO_API_CONTEXT = getGeoContext();
 
+    /*
+    If you'd like to influence the route using waypoints without adding a stopover,
+    prefix the waypoint with via:. Waypoints prefixed with via: will not add an entry
+    to the legs array, but will instead route the journey through the provided waypoint.
+
+    Caution: Using the via: prefix to avoid stopovers results in directions that are very strict in their
+    interpretation of the waypoint. This may result in severe detours on the route or ZERO_RESULTS in the
+    response status code if the Google Maps Directions API is unable to create directions through that point.
+     */
+
+
 
     //Each task direction takes about 0.1 seconds to load
-    public static DirectionsResult getTaskDirections(double startLat, Double startLon, Double endLat, Double endLon){
+    public static DirectionsResult getTaskDirections(Double[] locationLats, Double[] locationLongs, boolean ordered) {
+        int locationCount = locationLats.length;
+        String origin = locationLats[0] + ", " + locationLongs[0];
+        String destination = locationLats[locationCount-1] + ", " + locationLongs[locationCount-1];
+        String[] waypoints = new String[locationCount-2];
+        for (int index = 1; index < locationCount-1; index++) {
+            waypoints[index-1] = "via:" + locationLats[index] + ", " + locationLongs[index];
+        }
         DirectionsResult result = null;
         try {
             result = DirectionsApi.newRequest(GEO_API_CONTEXT)
                     .mode(TravelMode.DRIVING)
                     .alternatives(false)
-                    .origin(new LatLng(startLat, startLon))
-                    .destination(new LatLng(endLat, endLon))
+                    .origin(origin)
+                    .waypoints(waypoints)
+                    .optimizeWaypoints(!ordered)
+                    .destination(destination)
                     .await();
         } catch (ApiException | InterruptedException | IOException e) {
             e.printStackTrace();
@@ -33,8 +53,7 @@ public class DirectionsLoader {
         return result;
     }
 
-    public static String getLocationAddress(double startLat, Double startLon) {
-        LatLng location = new LatLng(startLat, startLon);
+    public static String getLocationAddress(LatLng location) {
         GeocodingResult[] results = null;
         try {
             results = GeocodingApi.newRequest(GEO_API_CONTEXT)
@@ -45,7 +64,7 @@ public class DirectionsLoader {
             e.printStackTrace();
         }
 
-        if (results.length > 0) {
+        if (results != null && results.length > 0) {
             return results[0].formattedAddress;
         } else {
             return null;

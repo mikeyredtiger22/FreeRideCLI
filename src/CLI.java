@@ -1,9 +1,8 @@
 import com.google.maps.model.DirectionsLeg;
 import com.google.maps.model.DirectionsResult;
+import com.google.maps.model.LatLng;
 import org.joda.time.LocalDateTime;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Scanner;
@@ -30,166 +29,352 @@ public class CLI {
         this.databaseAdmin = new DatabaseAdmin();
         this.scanner = new Scanner(System.in);
 
+        while (true) {
 
-        printInfoPage();
-        String userInput = receiveInput("");
-
-        while (!userInput.equalsIgnoreCase("exit")) {
-            switch (userInput) {
-                case "":
-                    System.out.println("Type 'exit' to quit.");
+            printInfoPage();
+            int mainMenuReply = getReply("", new String[]{"create", "info", "delete all tasks", "close"});
+            switch (mainMenuReply) {
+                case -1: //exit
+                    System.out.println("Type 'close' to quit.");
                     break;
 
-                case "create":
-                    String amountString = receiveInput("How many tasks to create? Enter '0' to cancel.");
-                    Integer amount = Integer.parseInt(amountString);
-                    if (amount > 0) {
-                        String state = receiveInput("Choose task state ('available' or 'new'). Press Enter to cancel.");
-                        if (!state.equals("available") && !state.equals("new")) {
-                            System.out.println(state + " not a valid task state. \uD83D\uDC80 ");
+                case 0: //create
+                    int amountReply = getReplyInt("How many tasks to create?", 100); //max 100
+                    if (amountReply == -1) { //exit
+                        continue;
+                    }
+                    int notifyReply = getReply("Do you want to send a notification of the tasks to all available users?",
+                            new String[]{"yes", "no"});
+                    int availableReply = 0; //yes
+                    if (notifyReply == -1) { //exit
+                        continue;
+                    } else if (notifyReply == 0) { //yes
+                        availableReply = getReply("Do you want the tasks to be available (searchable) by all users?",
+                                new String[]{"yes", "no"});
+                        if (availableReply == -1) { //exit
+                            continue;
+                        }
+                    }
+                    int locationCount = getReplyInt("How many locations/steps do you want the tasks to have?", 10); //max 10
+                    if (locationCount == -1) { //exit
+                        continue;
+                    }
+                    int orderedReply = getReply("Do you want the locations/steps to be completed in order?",
+                            new String[]{"yes", "no"});
+                    int directionsReply = 1; //no
+                    int directionsTypeReply = 1; //driving
+                    if (orderedReply == -1) { //exit
+                        continue;
+                    }
+                    if (locationCount > 1) {
+                        String directionsQuestion = "Do you want to generate directions for the task?";
+                        if (orderedReply == 1) { //no
+                            directionsQuestion += "\n(The route will be optimised by changing the location order)";
+                        }
+                        directionsReply = getReply(directionsQuestion,
+                                new String[]{"yes", "no"});
+                        if (directionsReply == -1) { //exit
+                            continue;
                         } else {
-                            String locationType = receiveInput("Should tasks have 'one' location or 'two' (start and end) locations?");
-                            if (!locationType.equals("one") && !locationType.equals("two")) {
-                                System.out.println("Location type can only be 'one' or 'two, you have entered '" + locationType + "'");
-                            } else {
-                                boolean oneLocationTask = locationType.equals("one");
-                                String location = receiveInput("Press Enter to randomly generate task location");
-                                //TODO user specify location and variance in miles
-                                createTasks(amount, oneLocationTask, state);
-                                System.out.println("Added " + amount + " " + state + " tasks to database.");
+                            directionsTypeReply = getReply("Do you want to generate walking or driving directions?",
+                                    new String[]{"walking", "driving"});
+                            if (directionsTypeReply == -1) { //exit
+                                continue;
                             }
                         }
                     }
+                    double latitudeReply = getReplyDouble("Enter base latitude of tasks", 90);
+                    if (latitudeReply == -1000) { //exit
+                        continue;
+                    }
+                    double longitudeReply = getReplyDouble("Enter base longitude of tasks", 180);
+                    if (longitudeReply == -1000) { //exit
+                        continue;
+                    }
+                    int varianceReply = getReplyInt("Enter the variance of the location in metres", 10000); //10km max
+                    if (varianceReply == -1) { //exit
+                        continue;
+                    }
+                    createTasks(
+                            amountReply, notifyReply, availableReply,
+                            locationCount, orderedReply,
+                            directionsReply, directionsTypeReply,
+                            latitudeReply, longitudeReply, varianceReply);
+
+                    System.out.println("Added " + amountReply + " tasks to database.");
                     break;
 
-                case "delete all tasks":
-                    String response = receiveInput("Are you sure you want to delete all the tasks in the database?\n" +
-                                                    "Type 'yes' to confirm or 'no' to cancel");
-                    if (response.equalsIgnoreCase("yes")) {
+                case 1: //info (creating tasks)
+                    //TODO
+                    break;
+
+                case 2: //delete all tasks
+                    int deleteReply = getReply("Are you sure you want to delete all the tasks in the database?\n" +
+                            "Type 'yes' to confirm or 'no' to cancel", new String[]{"yes", "no"});
+                    if (deleteReply == -1) { //exit
+                        continue;
+                    } else if (deleteReply == 0) { //yes
                         databaseAdmin.deleteAllTasks();
                         System.out.println("Deleted all tasks from database.");
-                    } else {
-                        System.out.println("Cancelled");
                     }
                     break;
 
-                default:
-                    System.out.println("'" + userInput + "' is not a recognised command.");
+                case 3: //close
+                    System.exit(777);
                     break;
             }
-
-            printInfoPage();
-            System.out.print(">");
-            userInput = receiveInput("");
         }
-        System.exit(777);
     }
 
-    private String receiveInput(String output) {
-        System.out.println(output);
-        System.out.print(">");
-        return scanner.nextLine().trim();
+    //Returns index of valid input that was input by the user, or -1 to exit
+    private int getReply(String output, String[] validInputs) {
+        //loops until user enters valid response or 'exit'
+        while (true) {
+            System.out.println(output);
+            System.out.print(">");
+            String input = scanner.nextLine().trim().toLowerCase();
+            if (input.equals("exit")) {
+                return -1;
+            } else {
+                for (int index = 0; index < validInputs.length; index++) {
+                    if (input.equals(validInputs[index])) {
+                        return index;
+                    }
+                }
+            }
+            //Input doesn't match any recognised commands
+            System.out.println("'" + input + "' is not a recognised command");
+
+            StringBuilder validInputsString = new StringBuilder();
+            validInputsString.append(validInputs[0]);
+            for (int index = 1; index < validInputs.length; index++) {
+                validInputsString.append(", ").append(validInputs[index]);
+            }
+            System.out.println("Please enter one of the following: " + validInputsString.toString());
+            System.out.println("Or type 'exit' to cancel and return to the main menu");
+        }
+    }
+
+    //Returns integer entered input by the user, or -1 to exit
+    private int getReplyInt(String output, int limit) {
+        while (true) {
+            System.out.println(output);
+            System.out.print(">");
+            String input = scanner.nextLine().trim();
+            if (input.equals("exit")) {
+                return -1;
+            } else {
+                int value;
+
+                try {
+                    value = Integer.parseInt(input);
+                } catch (NumberFormatException e) {
+                    System.out.println("'" + input + "' is not an integer");
+                    System.out.println("Enter an integer or type 'exit' to cancel and return to the main menu");
+                    continue;
+                }
+
+                if (value > 0 && value <= limit) {
+                    return value;
+                } else {
+                    System.out.println("Please enter a value greater than 0 and at most " + limit);
+                }
+            }
+        }
+    }
+
+    //Returns decimal entered input by the user, or -1 to exit
+    private double getReplyDouble(String output, double limit) {
+        while (true) {
+            System.out.println(output);
+            System.out.print(">");
+            String input = scanner.nextLine().trim();
+            if (input.equals("exit")) {
+                return -1000;
+            } else {
+                double value;
+
+                try {
+                    value = Double.parseDouble(input);
+                } catch (NumberFormatException e) {
+                    System.out.println("'" + input + "' is not a number");
+                    System.out.println("Enter a decimal or type 'exit' to cancel and return to the main menu");
+                    continue;
+                }
+
+                if (value < limit && value > -limit) {
+                    return value;
+                } else {
+                    System.out.println("Please enter a value greater than " + limit + " and greater than -" + limit);
+                }
+            }
+        }
     }
 
     private void printInfoPage() {
-        System.out.println("**            FREERIDE NEW TASK - COMMAND LINE INTERFACE             **");
-        System.out.println("**  type 'create' to generate tasks and add them to the database     **");
-        System.out.println("**  type 'delete all tasks' to delete all the tasks in the database  **");
-        System.out.println("**  type 'exit' to leave the CLI                                     **");
-        System.out.println("**  or type 'info' to see these commands again                       **");
+
+        System.out.println(" _______________________________________________________________________ ");
+        System.out.println("|              FREERIDE NEW TASK - COMMAND LINE INTERFACE               |");
+        System.out.println("|                                                                       |");
+        System.out.println("|  type 'create' to generate tasks and add them to the database         |");
+        System.out.println("|  type 'info' for an explanation of creating tasks                     |");
+        System.out.println("|  type 'delete all tasks' to delete all the tasks in the database      |");
+        System.out.println("|  type 'close' to close the CLI                                        |");
+        System.out.println("|  type 'exit' during any operation to cancel and return to this menu   |");
+        System.out.println("|_______________________________________________________________________|");
         //TODO explain what questions will be asked when creating tasks and how task state affects it.
 
     }
 
-    private void createTasks(int amount, boolean oneLocationTask, String state) {
-        databaseAdmin.addTasksArrayToDatabase(oneLocationTask, generateRandomTasks(amount, oneLocationTask, state));
+
+    private void createTasks(int amount, int notifyReply, int availableReply,
+                             int locationCount, int orderedReply,
+                             int directionsReply, int directionsTypeReply,
+                             double latitude, double longitude, int variance) {
+        //converting yes/no answers to boolean values
+        boolean notify = notifyReply == 0;
+        boolean available = availableReply == 0;
+        boolean ordered = orderedReply == 0;
+        boolean directions = directionsReply == 0;
+        boolean walkingDirections = directionsTypeReply == 0;
+
+//        databaseAdmin.addTasksArrayToDatabase(
+                generateRandomTasks(
+                        amount, notify, available,
+                        locationCount, ordered,
+                        directions, walkingDirections,
+                        latitude, longitude,  variance);
     }
 
     /**
      * Returns an Arraylist of a specified amount of randomly generated tasks.
      * State specified the state of the task when created.
      * Valid states: 'new', 'available'. Also: 'accepted', 'pending', 'completed'.
-     * todo validation. add states as consts (to VALUES)
-     * todo make task Builder
      * Location and incentive are randomly generated using guassian distribution.
-     * @param amount of tasks to generate and return
-     * @param oneLocationTask true for 1 location task, false for 2 location (start and end) task
-     * @param state of generated tasks
      * @return list of tasks generated
      */
-    public static ArrayList<Task> generateRandomTasks(int amount, boolean oneLocationTask, String state) {
+    public static ArrayList<Task> generateRandomTasks(int amount, boolean notify, boolean available,
+                                                      int locationCount, boolean ordered,
+                                                      boolean directions, boolean walkingDirections,
+                                                      double latitude, double longitude, int variance) {
         logger.log(Level.INFO, "Generating " + amount + " Random Tasks");
 
         ArrayList<Task> tasks = new ArrayList<>();
         for (int i=0; i<amount; i++) {
-            tasks.add(generateRandomTask(oneLocationTask, state));
+            tasks.add(
+                    generateRandomTask(
+                            notify, available,
+                            locationCount, ordered,
+                            directions, walkingDirections,
+                            latitude, longitude,  variance));
         }
         return tasks;
     }
 
     /**
      * Location and incentive are randomly generated using guassian distribution.
-     * @param oneLocationTask true for 1 location task, false for 2 location (start and end) task
-     * @param state of generated tasks
      * @return generated task
      */
-    public static Task generateRandomTask(boolean oneLocationTask, String state) {
+    public static Task generateRandomTask(boolean notify, boolean available,
+                                          int locationCount, boolean ordered,
+                                          boolean directions, boolean walkingDirections,
+                                          double latitude, double longitude, int variance) {
 
-        Double startLat = gaussianRandom(50.9355, 0.001, false, 5);
-        Double startLon = gaussianRandom(-1.397, 0.001, false, 5);
-        String startAddress = null;
 
-        Double endLat = null;
-        Double endLon = null;
-        String endAddress = null;
+        //Generate task locations
+        Double[] locationLats = new Double[locationCount];
+        Double[] locationLongs = new Double[locationCount];
+        String[] locationInstructions = new String[locationCount];
+
+
+        logger.log(Level.INFO, "STARTING GENERATION");
+        long time1 = System.nanoTime();
+        Random random = new Random();
+        for (int locationIndex = 0; locationIndex < locationCount; locationIndex++) {
+
+            //Use Random to generate a distance (gaussian, metres) and a direction (bearing in radians)
+            double distance = Math.abs((random.nextGaussian() * variance));
+            double bearing = random.nextDouble() * 2 * Math.PI;
+            double cosBearing = Math.cos(bearing);
+            double sinBearing = Math.sin(bearing);
+
+            //Use randomly generated distance and direction to create a new location (lat, long)
+            double angularDistance = distance / 6371000.0;
+            double cosAngularDistance = Math.cos(angularDistance);
+            double sinAngularDistance = Math.sin(angularDistance);
+
+            double baseLat = Math.toRadians(latitude);
+            double baseLong = Math.toRadians(longitude);
+            double cosBaseLat = Math.cos(baseLat);
+            double sinBaseLat = Math.sin(baseLat);
+
+            double latVariance =   Math.asin( cosAngularDistance * sinBaseLat
+                                            + sinAngularDistance * cosBaseLat * cosBearing);
+            double longVariance = Math.atan2( sinAngularDistance * cosBaseLat * sinBearing,
+                                              cosAngularDistance - sinBaseLat * sinBaseLat ) + baseLong;
+
+            locationLats[locationIndex] = latitude + latVariance;
+            locationLongs[locationIndex] = longitude + longVariance;
+            locationInstructions[locationIndex] = "Step " + locationIndex + ". Instructions.";
+        }
+        long time2 = System.nanoTime();
+        logger.log(Level.INFO, "time1: " + time1 + " time2: " + time2);
+
+
+        //Set other task fields to defaults
+        LocalDateTime creationLocalDateTime = LocalDateTime.now();
+        LocalDateTime expirationLocalDateTime = null;
+        String title = "Generated task";
+        String description = "Generated task";
+        String state = "";
+        if (notify) {
+            state += "notify";
+        }
+        if (available) {
+            state += "available";
+        }
+        String user = null;
+        Integer incentive = gaussianRandomInt(0, 1000);
+
+        //Directions
+        String[] locationAddresses = new String[locationCount];
         String directionsPath = null;
         String directionsDistance = null;
         String directionsDuration = null;
 
-        if (oneLocationTask) {
-            startAddress = DirectionsLoader.getLocationAddress(startLat, startLon);
-        } else {
-            endLat = gaussianRandom(50.9355, 0.001, false, 5);
-            endLon = gaussianRandom(-1.397, 0.001, false, 5);
 
-            DirectionsResult directionsResult =
-                    DirectionsLoader.getTaskDirections(startLat, startLon, endLat, endLon);
 
+
+        //TODO start and last locations are not optimised
+        if (directions) {
+            LatLng[] locations = new LatLng[locationCount];
+            for (int locationIndex = 0; locationIndex < locationCount; locationIndex++) {
+                LatLng location = new LatLng(locationLats[locationIndex], locationLongs[locationIndex]);
+                locations[locationIndex] = location;
+                locationAddresses[locationIndex] = DirectionsLoader.getLocationAddress(location);
+            }
+            DirectionsResult directionsResult = DirectionsLoader.getTaskDirections(locationLats, locationLongs, ordered);
             if (directionsResult.routes.length > 0) {
                 DirectionsLeg routeData = directionsResult.routes[0].legs[0];
-
                 directionsPath = directionsResult.routes[0].overviewPolyline.getEncodedPath();
                 directionsDistance = routeData.distance.humanReadable;
                 directionsDuration = routeData.duration.humanReadable;
-                startAddress = routeData.startAddress;
-                endAddress = routeData.endAddress;
             }
         }
 
-        return new Task(
-                oneLocationTask,
-                startLat, startLon, endLat, endLon,
-                startAddress, endAddress,
-                LocalDateTime.now(), null,
-                "Generated", "Randomly generated task values.",
-                state,
-                null,
-                directionsPath, directionsDistance, directionsDuration,
-                gaussianRandomInt(0, 1000));
+        for (int locationIndex = 0; locationIndex < locationCount; locationIndex++) {
+            LatLng location  = new LatLng(locationLats[locationIndex], locationLongs[locationIndex]);
+            locationAddresses[locationIndex] = DirectionsLoader.getLocationAddress(location);
+        }
+
+        return new Task(locationLats, locationLongs, locationInstructions, locationAddresses,
+                creationLocalDateTime, expirationLocalDateTime,
+                title, description, state, user,
+                directionsPath, directionsDistance, directionsDuration, incentive);
+
     }
 
     private static int gaussianRandomInt(int mean, int variance) {
         return mean + (int) Math.abs((new Random().nextGaussian() * variance));
-    }
-
-    private static double gaussianRandom(double mean, double variance, boolean absoluteValue, int decimalPlaces){
-        double diffFromMean = new Random().nextGaussian() * variance;
-        if (absoluteValue) {
-            diffFromMean = Math.abs(diffFromMean);
-        }
-        double result = mean + diffFromMean;
-        BigDecimal bd = new BigDecimal(result);
-        bd = bd.setScale(decimalPlaces, RoundingMode.HALF_UP);
-        return bd.doubleValue();
     }
 }

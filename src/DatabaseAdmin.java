@@ -46,14 +46,12 @@ public class DatabaseAdmin {
 
     /**
      * Receives an array of tasks, adds them to the same path in the database individually
-     * @param oneLocationTasks true for one location tasks, false for two location (start and end) tasks
      * @param taskArray tasks
      */
-    public void addTasksArrayToDatabase(boolean oneLocationTasks, ArrayList<Task> taskArray) {
-        DatabaseReference tasksRef = oneLocationTasks ? oneLocTasksRef : twoLocTasksRef;
+    public void addTasksArrayToDatabase(ArrayList<Task> taskArray) {
         Gson gson = getGson();
         for (Task task :taskArray) {
-            addTaskToDatabase(tasksRef, task, gson);
+            addTaskToDatabase(oneLocTasksRef, task, gson);
         }
     }
 
