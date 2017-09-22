@@ -4,6 +4,7 @@ import com.google.maps.model.LatLng;
 import org.joda.time.LocalDateTime;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.logging.Level;
@@ -39,10 +40,21 @@ public class CLI {
                     break;
 
                 case 0: //create
+
+
+
                     int amountReply = getReplyInt("How many tasks to create?", 100); //max 100
                     if (amountReply == -1) { //exit
                         continue;
                     }
+
+                    createTasks(
+                            amountReply, 1, 0,
+                            amountReply, 1,
+                            0, 1,
+                            50.9368, -1.396, 100);
+                    break;
+                    /*
                     int notifyReply = getReply("Do you want to send a notification of the tasks to all available users?",
                             new String[]{"yes", "no"});
                     int availableReply = 0; //yes
@@ -71,7 +83,7 @@ public class CLI {
                         }
                         String directionsQuestion = "Do you want to generate directions for the task?";
                         if (orderedReply == 1) { //no
-                            directionsQuestion += "\n(The route will be optimised by changing the location order)";
+                            directionsQuestion += "\n(Directions for unordered locations will take longer to calculate the optimum route)";
                         }
                         directionsReply = getReply(directionsQuestion,
                                 new String[]{"yes", "no"});
@@ -104,7 +116,7 @@ public class CLI {
 
                     System.out.println("Adding " + amountReply + " tasks to database.");
                     break;
-
+*/
                 case 1: //info (creating tasks)
                     //TODO
                     break;
@@ -285,6 +297,8 @@ public class CLI {
         Double[] locationLats = new Double[locationCount];
         Double[] locationLongs = new Double[locationCount];
         String[] locationInstructions = new String[locationCount];
+        Boolean[] verified = new Boolean[locationCount];
+        Arrays.fill(verified, false);
 
         Random random = new Random();
         for (int locationIndex = 0; locationIndex < locationCount; locationIndex++) {
@@ -296,7 +310,7 @@ public class CLI {
             double sinBearing = Math.sin(bearing);
 
             //Turn randomly generated distance and direction to lat/longitude difference
-            double angularDistance = distance / 6371.0;
+            double angularDistance = distance / 6371000.0;
             double cosAngularDistance = Math.cos(angularDistance);
             double sinAngularDistance = Math.sin(angularDistance);
 
@@ -312,8 +326,10 @@ public class CLI {
                                               cosAngularDistance - sinBaseLat * sinBaseLat ) + baseLong;
 
             //Adding generated distance and direction to base location
-            locationLats[locationIndex] = latitude + latVariance;
-            locationLongs[locationIndex] = longitude + longVariance;
+            System.out.println("lat: " + latitude + " var:" + Math.toDegrees(latVariance));
+            System.out.println("long: " + longitude + " var:" + Math.toDegrees(longVariance));
+            locationLats[locationIndex] = Math.toDegrees(latVariance);
+            locationLongs[locationIndex] = Math.toDegrees(longVariance);
             locationInstructions[locationIndex] = "Step " + locationIndex + ". Instructions.";
         }
 
@@ -341,6 +357,7 @@ public class CLI {
 
 
         //TODO start and last locations are not optimised
+        //TODO directions..very slow? try to get address from directions result?
         for (int locationIndex = 0; locationIndex < locationCount; locationIndex++) {
             LatLng location = new LatLng(locationLats[locationIndex], locationLongs[locationIndex]);
             locationAddresses[locationIndex] = DirectionsLoader.getLocationAddress(location);
@@ -356,8 +373,8 @@ public class CLI {
             }
         }
 
-        return new Task(locationCount, locationLats, locationLongs, locationInstructions, locationAddresses,
-                creationLocalDateTime, expirationLocalDateTime,
+        return new Task(locationCount, ordered, locationLats, locationLongs, locationInstructions, locationAddresses,
+                verified, creationLocalDateTime, expirationLocalDateTime,
                 title, description, state, user, incentive,
                 directions, directionsPath, directionsDistance, directionsDuration);
 
