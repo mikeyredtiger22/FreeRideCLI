@@ -48,7 +48,8 @@ public class CLI {
                     int availableReply = 0; //yes
                     if (notifyReply == -1) { //exit
                         continue;
-                    } else if (notifyReply == 0) { //yes
+                    }
+                    if (notifyReply == 0) { //yes
                         availableReply = getReply("Do you want the tasks to be available (searchable) by all users?",
                                 new String[]{"yes", "no"});
                         if (availableReply == -1) { //exit
@@ -59,14 +60,15 @@ public class CLI {
                     if (locationCount == -1) { //exit
                         continue;
                     }
-                    int orderedReply = getReply("Do you want the locations/steps to be completed in order?",
-                            new String[]{"yes", "no"});
+                    int orderedReply = 1; //no
                     int directionsReply = 1; //no
                     int directionsTypeReply = 1; //driving
-                    if (orderedReply == -1) { //exit
-                        continue;
-                    }
                     if (locationCount > 1) {
+                        orderedReply = getReply("Do you want the locations/steps to be completed in order?",
+                                new String[]{"yes", "no"});
+                        if (orderedReply == -1) { //exit
+                            continue;
+                        }
                         String directionsQuestion = "Do you want to generate directions for the task?";
                         if (orderedReply == 1) { //no
                             directionsQuestion += "\n(The route will be optimised by changing the location order)";
@@ -75,12 +77,11 @@ public class CLI {
                                 new String[]{"yes", "no"});
                         if (directionsReply == -1) { //exit
                             continue;
-                        } else {
-                            directionsTypeReply = getReply("Do you want to generate walking or driving directions?",
-                                    new String[]{"walking", "driving"});
-                            if (directionsTypeReply == -1) { //exit
-                                continue;
-                            }
+                        }
+                        directionsTypeReply = getReply("Do you want to generate walking or driving directions?",
+                                new String[]{"walking", "driving"});
+                        if (directionsTypeReply == -1) { //exit
+                            continue;
                         }
                     }
                     double latitudeReply = getReplyDouble("Enter base latitude of tasks", 90);
@@ -101,7 +102,7 @@ public class CLI {
                             directionsReply, directionsTypeReply,
                             latitudeReply, longitudeReply, varianceReply);
 
-                    System.out.println("Added " + amountReply + " tasks to database.");
+                    System.out.println("Adding " + amountReply + " tasks to database.");
                     break;
 
                 case 1: //info (creating tasks)
@@ -238,12 +239,12 @@ public class CLI {
         boolean directions = directionsReply == 0;
         boolean walkingDirections = directionsTypeReply == 0;
 
-//        databaseAdmin.addTasksArrayToDatabase(
+        databaseAdmin.addTasksArrayToDatabase(
                 generateRandomTasks(
                         amount, notify, available,
                         locationCount, ordered,
                         directions, walkingDirections,
-                        latitude, longitude,  variance);
+                        latitude, longitude,  variance));
     }
 
     /**
@@ -258,7 +259,7 @@ public class CLI {
                                                       boolean directions, boolean walkingDirections,
                                                       double latitude, double longitude, int variance) {
         logger.log(Level.INFO, "Generating " + amount + " Random Tasks");
-
+        //TODO taking a long time to generate and add to db
         ArrayList<Task> tasks = new ArrayList<>();
         for (int i=0; i<amount; i++) {
             tasks.add(
@@ -280,26 +281,22 @@ public class CLI {
                                           boolean directions, boolean walkingDirections,
                                           double latitude, double longitude, int variance) {
 
-
         //Generate task locations
         Double[] locationLats = new Double[locationCount];
         Double[] locationLongs = new Double[locationCount];
         String[] locationInstructions = new String[locationCount];
 
-
-        logger.log(Level.INFO, "STARTING GENERATION");
-        long time1 = System.nanoTime();
         Random random = new Random();
         for (int locationIndex = 0; locationIndex < locationCount; locationIndex++) {
 
             //Use Random to generate a distance (gaussian, metres) and a direction (bearing in radians)
-            double distance = Math.abs((random.nextGaussian() * variance));
+            double distance = variance * Math.abs(random.nextGaussian());
             double bearing = random.nextDouble() * 2 * Math.PI;
             double cosBearing = Math.cos(bearing);
             double sinBearing = Math.sin(bearing);
 
-            //Use randomly generated distance and direction to create a new location (lat, long)
-            double angularDistance = distance / 6371000.0;
+            //Turn randomly generated distance and direction to lat/longitude difference
+            double angularDistance = distance / 6371.0;
             double cosAngularDistance = Math.cos(angularDistance);
             double sinAngularDistance = Math.sin(angularDistance);
 
@@ -308,17 +305,17 @@ public class CLI {
             double cosBaseLat = Math.cos(baseLat);
             double sinBaseLat = Math.sin(baseLat);
 
+            //These values represent the change in lat/longitude
             double latVariance =   Math.asin( cosAngularDistance * sinBaseLat
                                             + sinAngularDistance * cosBaseLat * cosBearing);
             double longVariance = Math.atan2( sinAngularDistance * cosBaseLat * sinBearing,
                                               cosAngularDistance - sinBaseLat * sinBaseLat ) + baseLong;
 
+            //Adding generated distance and direction to base location
             locationLats[locationIndex] = latitude + latVariance;
             locationLongs[locationIndex] = longitude + longVariance;
             locationInstructions[locationIndex] = "Step " + locationIndex + ". Instructions.";
         }
-        long time2 = System.nanoTime();
-        logger.log(Level.INFO, "time1: " + time1 + " time2: " + time2);
 
 
         //Set other task fields to defaults
@@ -343,17 +340,14 @@ public class CLI {
         String directionsDuration = null;
 
 
-
-
         //TODO start and last locations are not optimised
+        for (int locationIndex = 0; locationIndex < locationCount; locationIndex++) {
+            LatLng location = new LatLng(locationLats[locationIndex], locationLongs[locationIndex]);
+            locationAddresses[locationIndex] = DirectionsLoader.getLocationAddress(location);
+        }
         if (directions) {
-            LatLng[] locations = new LatLng[locationCount];
-            for (int locationIndex = 0; locationIndex < locationCount; locationIndex++) {
-                LatLng location = new LatLng(locationLats[locationIndex], locationLongs[locationIndex]);
-                locations[locationIndex] = location;
-                locationAddresses[locationIndex] = DirectionsLoader.getLocationAddress(location);
-            }
-            DirectionsResult directionsResult = DirectionsLoader.getTaskDirections(locationLats, locationLongs, ordered);
+            DirectionsResult directionsResult =
+                    DirectionsLoader.getTaskDirections(locationLats, locationLongs, ordered, walkingDirections);
             if (directionsResult.routes.length > 0) {
                 DirectionsLeg routeData = directionsResult.routes[0].legs[0];
                 directionsPath = directionsResult.routes[0].overviewPolyline.getEncodedPath();
@@ -362,15 +356,10 @@ public class CLI {
             }
         }
 
-        for (int locationIndex = 0; locationIndex < locationCount; locationIndex++) {
-            LatLng location  = new LatLng(locationLats[locationIndex], locationLongs[locationIndex]);
-            locationAddresses[locationIndex] = DirectionsLoader.getLocationAddress(location);
-        }
-
-        return new Task(locationLats, locationLongs, locationInstructions, locationAddresses,
+        return new Task(locationCount, locationLats, locationLongs, locationInstructions, locationAddresses,
                 creationLocalDateTime, expirationLocalDateTime,
-                title, description, state, user,
-                directionsPath, directionsDistance, directionsDuration, incentive);
+                title, description, state, user, incentive,
+                directions, directionsPath, directionsDistance, directionsDuration);
 
     }
 

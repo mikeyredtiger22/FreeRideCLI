@@ -18,8 +18,8 @@ import java.util.logging.Logger;
 public class DatabaseAdmin {
 
     private static final Logger logger = Logger.getLogger(DatabaseAdmin.class.getName());
-    private DatabaseReference oneLocTasksRef;
-    private DatabaseReference twoLocTasksRef;
+    private DatabaseReference treatmentAll_TasksRef;
+    private DatabaseReference allTasksPath;
 
     /**
      * Authenticate Server - Using Database Admin API
@@ -40,8 +40,8 @@ public class DatabaseAdmin {
             FirebaseApp.initializeApp(options);
         } catch (IOException e) {e.printStackTrace();}
         FirebaseDatabase databaseInstance = FirebaseDatabase.getInstance();
-        oneLocTasksRef = databaseInstance.getReference("tasks/oneLoc");
-        twoLocTasksRef = databaseInstance.getReference("tasks/twoLoc");
+        allTasksPath = databaseInstance.getReference("tasks");
+        treatmentAll_TasksRef = allTasksPath.child("treatmentAll");
     }
 
     /**
@@ -51,7 +51,7 @@ public class DatabaseAdmin {
     public void addTasksArrayToDatabase(ArrayList<Task> taskArray) {
         Gson gson = getGson();
         for (Task task :taskArray) {
-            addTaskToDatabase(oneLocTasksRef, task, gson);
+            addTaskToDatabase(treatmentAll_TasksRef, task, gson);
         }
     }
 
@@ -74,8 +74,7 @@ public class DatabaseAdmin {
     }
 
     public void deleteAllTasks() {
-        oneLocTasksRef.removeValue();
-        twoLocTasksRef.removeValue();
+        allTasksPath.removeValue();
     }
 
     private Gson getGson(){

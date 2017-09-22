@@ -3,6 +3,7 @@ import org.joda.time.LocalDateTime;
 public class Task {
 
     private String taskId;
+    private Integer locationCount;
     private Double[] locationLats;
     private Double[] locationLongs;
     private String[] locationInstructions;
@@ -13,15 +14,18 @@ public class Task {
     private String description;
     private String state;
     private String user;
+    private Integer incentive;
+    private Boolean hasDirections;
     private String directionsPath;
     private String directionsDistance;
     private String directionsDuration;
-    private Integer incentive;
 
-    public Task(Double[] locationLats, Double[] locationLongs, String[] locationInstructions, String[] locationAddresses,
+    public Task(Integer locationCount, Double[] locationLats, Double[] locationLongs,
+                String[] locationInstructions, String[] locationAddresses,
                 LocalDateTime creationLocalDateTime, LocalDateTime expirationLocalDateTime,
-                String title, String description, String state, String user,
-                String directionsPath, String directionsDistance, String directionsDuration, Integer incentive) {
+                String title, String description, String state, String user, Integer incentive,
+                Boolean hasDirections, String directionsPath, String directionsDistance, String directionsDuration) {
+        this.locationCount = locationCount;
         this.locationLats = locationLats;
         this.locationLongs = locationLongs;
         this.locationInstructions = locationInstructions;
@@ -32,10 +36,11 @@ public class Task {
         this.description = description;
         this.state = state;
         this.user = user;
+        this.incentive = incentive;
+        this.hasDirections = hasDirections;
         this.directionsPath = directionsPath;
         this.directionsDistance = directionsDistance;
         this.directionsDuration = directionsDuration;
-        this.incentive = incentive;
     }
 
     public Task() {
@@ -48,6 +53,14 @@ public class Task {
 
     public void setTaskId(String taskId) {
         this.taskId = taskId;
+    }
+
+    public Integer getLocationCount() {
+        return locationCount;
+    }
+
+    public void setLocationCount(Integer locationCount) {
+        this.locationCount = locationCount;
     }
 
     public Double[] getLocationLats() {
@@ -130,6 +143,22 @@ public class Task {
         this.user = user;
     }
 
+    public Integer getIncentive() {
+        return incentive;
+    }
+
+    public void setIncentive(Integer incentive) {
+        this.incentive = incentive;
+    }
+
+    public Boolean getHasDirections() {
+        return hasDirections;
+    }
+
+    public void setHasDirections(Boolean hasDirections) {
+        this.hasDirections = hasDirections;
+    }
+
     public String getDirectionsPath() {
         return directionsPath;
     }
@@ -152,13 +181,5 @@ public class Task {
 
     public void setDirectionsDuration(String directionsDuration) {
         this.directionsDuration = directionsDuration;
-    }
-
-    public Integer getIncentive() {
-        return incentive;
-    }
-
-    public void setIncentive(Integer incentive) {
-        this.incentive = incentive;
     }
 }

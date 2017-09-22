@@ -29,7 +29,9 @@ public class DirectionsLoader {
 
 
     //Each task direction takes about 0.1 seconds to load
-    public static DirectionsResult getTaskDirections(Double[] locationLats, Double[] locationLongs, boolean ordered) {
+    public static DirectionsResult getTaskDirections(Double[] locationLats, Double[] locationLongs,
+                                                     boolean ordered, boolean walking) {
+        TravelMode travelMode = walking ? TravelMode.WALKING : TravelMode.DRIVING;
         int locationCount = locationLats.length;
         String origin = locationLats[0] + ", " + locationLongs[0];
         String destination = locationLats[locationCount-1] + ", " + locationLongs[locationCount-1];
@@ -40,7 +42,7 @@ public class DirectionsLoader {
         DirectionsResult result = null;
         try {
             result = DirectionsApi.newRequest(GEO_API_CONTEXT)
-                    .mode(TravelMode.DRIVING)
+                    .mode(travelMode)
                     .alternatives(false)
                     .origin(origin)
                     .waypoints(waypoints)
