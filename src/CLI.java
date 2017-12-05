@@ -52,7 +52,7 @@ public class CLI {
                             amountReply, 1, 0,
                             amountReply, 1,
                             0, 1,
-                            50.9368, -1.396, 100);
+                            50.9308, -1.39, 50);
                     break;
                     /*
                     int notifyReply = getReply("Do you want to send a notification of the tasks to all available users?",
@@ -297,6 +297,7 @@ public class CLI {
         Double[] locationLats = new Double[locationCount];
         Double[] locationLongs = new Double[locationCount];
         String[] locationInstructions = new String[locationCount];
+        String[] locationUserData = new String[locationCount];
         Boolean[] verified = new Boolean[locationCount];
         Arrays.fill(verified, false);
 
@@ -374,7 +375,7 @@ public class CLI {
         }
 
         return new Task(locationCount, ordered, locationLats, locationLongs, locationInstructions, locationAddresses,
-                verified, creationLocalDateTime, expirationLocalDateTime,
+                locationUserData, verified, creationLocalDateTime, expirationLocalDateTime,
                 title, description, state, user, incentive,
                 directions, directionsPath, directionsDistance, directionsDuration);
 
